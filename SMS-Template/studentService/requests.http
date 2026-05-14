@@ -1,0 +1,23 @@
+### Get all students
+GET http://localhost:5003/api/students
+
+
+### Create a new student
+POST http://localhost:5003/api/students
+Content-Type: application/json
+
+{
+  "name": "Lavan Test",
+  "email": "lavan.test@example.com",
+  "password": "secret123"
+}
+
+
+### Update a student (replace :id with an actual _id from GET response)
+PUT http://localhost:5003/api/students/REPLACE_WITH_STUDENT_ID
+Content-Type: application/json
+
+{
+  "name": "Lavan Updated",
+  "email": "lavan.updated@example.com"
+}
