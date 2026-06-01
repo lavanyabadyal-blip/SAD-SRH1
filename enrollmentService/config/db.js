@@ -1,7 +1,5 @@
 const mongoose = require("mongoose");
 
-// Same shape as studentService — kept independent so a future migration
-// of just one service does not have to touch the other.
 const connectDB = async () => {
   const uri = process.env.MONGO_URI;
   if (!uri) {

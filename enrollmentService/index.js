@@ -1,4 +1,4 @@
-// Professor service entry point. Mirrors studentService structure.
+// Enrollment service entry point.
 
 const path = require("path");
 const dotenv = require("dotenv");
@@ -6,8 +6,8 @@ dotenv.config({ path: path.join(__dirname, ".env") });
 
 const express = require("express");
 const connectDB = require("./config/db");
-const professorRoute = require("./routes/professorRoute");
-const { professorServiceLogger } = require("../logging");
+const enrollmentRoute = require("./routes/enrollmentRoute");
+const { enrollmentServiceLogger } = require("../logging");
 const { correlationIdMiddleware } = require("../correlationId");
 
 const app = express();
@@ -15,17 +15,17 @@ const app = express();
 app.use(express.json());
 app.use(correlationIdMiddleware);
 
-app.use("/api/professors", professorRoute);
+app.use("/api/enrollments", enrollmentRoute);
 
 (async function start() {
   try {
     await connectDB();
-    const PORT = process.env.PORT || 5002;
+    const PORT = process.env.PORT || 5005;
     app.listen(PORT, () => {
-      professorServiceLogger.info(`Professor service running on port ${PORT}`);
+      enrollmentServiceLogger.info(`Enrollment service running on port ${PORT}`);
     });
   } catch (err) {
-    professorServiceLogger.error(`professor service startup failed: ${err.message}`);
+    enrollmentServiceLogger.error(`enrollment service startup failed: ${err.message}`);
     process.exit(1);
   }
 })();

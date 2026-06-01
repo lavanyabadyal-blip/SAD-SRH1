@@ -1,31 +1,83 @@
+// JWT/JWKS verification for professorService. Same logic as in
+// studentService except restrictProfessorToOwnData enforces that a
+// professor token can only access its own :id.
+
 const jwt = require("jsonwebtoken");
-const dotenv = require("dotenv");
 const axios = require("axios");
 const jwkToPem = require("jwk-to-pem");
-const { ROLES } = require("../../../consts");
 
-dotenv.config();
+const { ROLES, AUTH_SERVICE_JWKS } = require("../../../consts");
 
-async function fetchJWKS(jku) {}
+const TRUSTED_JKU_PREFIXES = [AUTH_SERVICE_JWKS.replace("/.well-known/jwks.json", "")];
+
+const JWKS_CACHE_MS = 5 * 60 * 1000;
+const jwksCache = new Map();
+
+async function fetchJWKS(jku) {
+  const cached = jwksCache.get(jku);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.keys;
+  }
+  const response = await axios.get(jku, { timeout: 4000 });
+  const keys = response.data.keys || [];
+  jwksCache.set(jku, { keys, expiresAt: Date.now() + JWKS_CACHE_MS });
+  return keys;
+}
 
 function getPublicKeyFromJWKS(kid, keys) {
   const key = keys.find((k) => k.kid === kid);
-
   if (!key) {
-    throw new Error("Unable to find a signing key that matches the 'kid'");
+    throw new Error("no signing key matches the token's kid");
   }
-
   return jwkToPem(key);
 }
 
-async function verifyJWTWithJWKS(token) {}
+async function verifyJWTWithJWKS(token) {
+  const decoded = jwt.decode(token, { complete: true });
+  if (!decoded || !decoded.header) {
+    throw new Error("malformed token");
+  }
+  const { kid, jku } = decoded.header;
+  if (!kid || !jku) {
+    throw new Error("token missing kid or jku");
+  }
+  if (!TRUSTED_JKU_PREFIXES.some((p) => jku.startsWith(p))) {
+    throw new Error("untrusted JWKS URL");
+  }
+  const keys = await fetchJWKS(jku);
+  const pem = getPublicKeyFromJWKS(kid, keys);
+  return jwt.verify(token, pem, { algorithms: ["RS256"] });
+}
 
-// Role-based Access Control Middleware
-function verifyRole(requiredRoles) {}
+function verifyRole(allowedRoles) {
+  return async (req, res, next) => {
+    const authHeader = req.headers["authorization"];
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "missing bearer token" });
+    }
+    const token = authHeader.slice("Bearer ".length);
+    try {
+      const payload = await verifyJWTWithJWKS(token);
+      if (!allowedRoles.includes(payload.role)) {
+        return res.status(403).json({ error: "forbidden: insufficient role" });
+      }
+      req.user = payload;
+      return next();
+    } catch (err) {
+      return res.status(401).json({ error: "invalid or expired token" });
+    }
+  };
+}
 
-function restrictProfessorToOwnData(req, res, next) {}
+function restrictProfessorToOwnData(req, res, next) {
+  if (req.user && req.user.role === ROLES.PROFESSOR && req.user.sub !== req.params.id) {
+    return res.status(403).json({ error: "professors can only access their own data" });
+  }
+  return next();
+}
 
 module.exports = {
+  verifyJWTWithJWKS,
   verifyRole,
   restrictProfessorToOwnData,
 };

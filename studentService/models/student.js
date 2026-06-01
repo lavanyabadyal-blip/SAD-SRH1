@@ -1,47 +1,49 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
+// Student model. Email is the natural identity (unique + lowercase).
+// Password is hashed via a pre-save hook so callers never have to remember
+// to hash before saving. timestamps adds createdAt/updatedAt for sorting.
 
-const studentSchema = new mongoose.Schema({
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
+
+const studentSchema = new mongoose.Schema(
+  {
     name: {
-        type: String,
-        required: true,
-        trim: true
+      type: String,
+      required: true,
+      trim: true,
     },
     email: {
-        type: String,
-        required: true,
-        unique: true,
-        lowercase: true
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
     },
     password: {
-        type: String,
-        required: true,
-        minlength: 6
+      type: String,
+      required: true,
+      minlength: 6,
     },
-    courses: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Course"
-    }]
-});
+  },
+  { timestamps: true }
+);
 
-// Hash password before saving (only if it was modified)
+// Hash the password before it ever hits the database. Skipped when
+// password was not modified so name/email updates do not double-hash.
 studentSchema.pre("save", async function (next) {
-    if (!this.isModified("password")) return next();
-
-    try {
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-        next();
-    } catch (error) {
-        next(error);
-    }
+  if (!this.isModified("password")) return next();
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
 
-// Compare entered password against the stored hash
-studentSchema.methods.comparePassword = async function (enteredPassword) {
-    return bcrypt.compare(enteredPassword, this.password);
+// Instance method used by authService during login.
+studentSchema.methods.comparePassword = async function (entered) {
+  return bcrypt.compare(entered, this.password);
 };
 
-const Student = mongoose.model("Student", studentSchema);
-
-module.exports = Student;
+module.exports = mongoose.model("Student", studentSchema);

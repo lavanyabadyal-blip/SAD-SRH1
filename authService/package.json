@@ -1,11 +1,11 @@
 {
-  "name": "professorservice",
+  "name": "authservice",
   "version": "1.0.0",
-  "description": "Professor microservice for Student Management System",
+  "description": "Authentication service - issues JWTs and exposes JWKS",
   "main": "index.js",
   "scripts": {
-    "start-professor-service": "node index.js",
-    "dev-professor-service": "nodemon index.js"
+    "start-auth-service": "node index.js",
+    "dev-auth-service": "nodemon index.js"
   },
   "author": "Lavanya Badyal",
   "license": "ISC",
@@ -16,8 +16,6 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "jwk-to-pem": "^2.0.7",
-    "mongoose": "^8.9.2",
     "uuid": "^9.0.1",
     "winston": "^3.13.0"
   },

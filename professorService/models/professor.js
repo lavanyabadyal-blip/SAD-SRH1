@@ -1,46 +1,50 @@
+// Professor model. Same shape as Student plus a phone field that
+// distinguishes a professor record. timestamps used for sorting.
+
 const mongoose = require("mongoose");
-const bcrypt = require("bcrypt"); // For password hashing
+const bcrypt = require("bcryptjs");
 
-// Define the Professor Schema
-const professorSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
+const professorSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    phone: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    password: {
+      type: String,
+      required: true,
+      minlength: 6,
+    },
   },
-  email: {
-    type: String,
-    required: true,
-    unique: true, // Ensure each professor has a unique email
-  },
-  phone: {
-    type: String,
-    required: true,
-    unique: true, // Ensure each professor has a unique phone number
-  },
-  password: {
-    type: String,
-    required: true, // Store the hashed password
-  },
-});
+  { timestamps: true }
+);
 
-// Pre-save hook to hash the password before saving
 professorSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next(); // Only hash if the password is new/changed
-
+  if (!this.isModified("password")) return next();
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
     next();
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 });
 
-// Method to compare provided password with the stored hashed password
-professorSchema.methods.comparePassword = async function (enteredPassword) {
-  return bcrypt.compare(enteredPassword, this.password);
+professorSchema.methods.comparePassword = async function (entered) {
+  return bcrypt.compare(entered, this.password);
 };
 
-const Professor = mongoose.model("Professor", professorSchema);
-
-module.exports = Professor;
+module.exports = mongoose.model("Professor", professorSchema);

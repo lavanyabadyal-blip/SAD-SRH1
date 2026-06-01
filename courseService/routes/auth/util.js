@@ -1,28 +1,20 @@
-// JWT/JWKS verification for studentService. Resource servers (this one)
-// do not hold the auth private key — they fetch the public key from the
-// auth service over HTTP, cache it briefly, and verify tokens locally.
+// JWT/JWKS verification for courseService. No "own data" restriction
+// needed here — RBAC alone is enough.
 
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
 const jwkToPem = require("jwk-to-pem");
 
-const { ROLES, AUTH_SERVICE_JWKS } = require("../../../consts");
+const { AUTH_SERVICE_JWKS } = require("../../../consts");
 
-// Allow JWKs to be fetched only from URLs that begin with our own auth
-// service. Stops a malicious token forcing us to fetch keys from elsewhere.
 const TRUSTED_JKU_PREFIXES = [AUTH_SERVICE_JWKS.replace("/.well-known/jwks.json", "")];
 
-// Very small JWKS cache. Keyed by JKU URL, expires after a few minutes.
-// Avoids one HTTP round trip per request once warmed up.
 const JWKS_CACHE_MS = 5 * 60 * 1000;
 const jwksCache = new Map();
 
 async function fetchJWKS(jku) {
   const cached = jwksCache.get(jku);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.keys;
-  }
-
+  if (cached && cached.expiresAt > Date.now()) return cached.keys;
   const response = await axios.get(jku, { timeout: 4000 });
   const keys = response.data.keys || [];
   jwksCache.set(jku, { keys, expiresAt: Date.now() + JWKS_CACHE_MS });
@@ -31,47 +23,30 @@ async function fetchJWKS(jku) {
 
 function getPublicKeyFromJWKS(kid, keys) {
   const key = keys.find((k) => k.kid === kid);
-  if (!key) {
-    throw new Error("no signing key matches the token's kid");
-  }
+  if (!key) throw new Error("no signing key matches the token's kid");
   return jwkToPem(key);
 }
 
-// Verify a token end-to-end: decode the header to discover kid/jku,
-// fetch and cache the JWKS, find the matching key, then jwt.verify.
 async function verifyJWTWithJWKS(token) {
   const decoded = jwt.decode(token, { complete: true });
-  if (!decoded || !decoded.header) {
-    throw new Error("malformed token");
-  }
-
+  if (!decoded || !decoded.header) throw new Error("malformed token");
   const { kid, jku } = decoded.header;
-  if (!kid || !jku) {
-    throw new Error("token missing kid or jku");
-  }
-
+  if (!kid || !jku) throw new Error("token missing kid or jku");
   if (!TRUSTED_JKU_PREFIXES.some((p) => jku.startsWith(p))) {
     throw new Error("untrusted JWKS URL");
   }
-
   const keys = await fetchJWKS(jku);
   const pem = getPublicKeyFromJWKS(kid, keys);
-
   return jwt.verify(token, pem, { algorithms: ["RS256"] });
 }
 
-// Middleware factory: requires an Authorization: Bearer <token> header,
-// verifies the token and checks the embedded role is in the allowed list.
-// Attaches the decoded payload to req.user for downstream handlers.
 function verifyRole(allowedRoles) {
   return async (req, res, next) => {
     const authHeader = req.headers["authorization"];
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({ error: "missing bearer token" });
     }
-
     const token = authHeader.slice("Bearer ".length);
-
     try {
       const payload = await verifyJWTWithJWKS(token);
       if (!allowedRoles.includes(payload.role)) {
@@ -85,17 +60,4 @@ function verifyRole(allowedRoles) {
   };
 }
 
-// For routes that include :id, a student token may only access its own id.
-// Admins and professors skip this check.
-function restrictStudentToOwnData(req, res, next) {
-  if (req.user && req.user.role === ROLES.STUDENT && req.user.sub !== req.params.id) {
-    return res.status(403).json({ error: "students can only access their own data" });
-  }
-  return next();
-}
-
-module.exports = {
-  verifyJWTWithJWKS,
-  verifyRole,
-  restrictStudentToOwnData,
-};
+module.exports = { verifyJWTWithJWKS, verifyRole };

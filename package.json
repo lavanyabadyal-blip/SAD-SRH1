@@ -1,8 +1,7 @@
 {
-  "name": "rest_api_basic_to_advance",
+  "name": "sms-template",
   "version": "1.0.0",
-  "description": "Boiler plate project for rest api concepts",
-  "main": "index.js",
+  "description": "Student Management System - microservices boilerplate",
   "scripts": {
     "start:authService": "npm --prefix ./authService run dev-auth-service",
     "start:professorService": "npm --prefix ./professorService run dev-professor-service",
@@ -11,8 +10,13 @@
     "start:enrollmentService": "npm --prefix ./enrollmentService run dev-enrollment-service",
     "start:all": "concurrently --kill-others-on-fail -n authService,professorService,studentService,courseService,enrollmentService -c green,blue,magenta,cyan,yellow \"npm run start:authService\" \"npm run start:professorService\" \"npm run start:studentService\" \"npm run start:courseService\" \"npm run start:enrollmentService\""
   },
-  "author": "Gunjan Kadu",
+  "author": "Lavanya Badyal",
   "license": "ISC",
+  "dependencies": {
+    "cls-hooked": "^4.2.2",
+    "uuid": "^9.0.1",
+    "winston": "^3.13.0"
+  },
   "devDependencies": {
     "concurrently": "^9.1.2",
     "nodemon": "^3.1.9"
