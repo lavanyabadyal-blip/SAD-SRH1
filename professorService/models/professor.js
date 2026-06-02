@@ -28,6 +28,12 @@ const professorSchema = new mongoose.Schema(
       required: true,
       minlength: 6,
     },
+    // Professors can also be promoted to admin via Atlas if desired.
+    role: {
+      type: String,
+      enum: ["professor", "admin"],
+      default: "professor",
+    },
   },
   { timestamps: true }
 );

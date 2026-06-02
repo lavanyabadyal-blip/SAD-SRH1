@@ -37,8 +37,11 @@ router.post("/student", async (req, res) => {
       return res.status(401).json({ error: "invalid credentials" });
     }
 
-    const token = signToken({ sub: student._id, role: ROLES.STUDENT });
-    authServiceLogger.info(`student login ok id=${student._id}`);
+    // Honour an explicit role on the student record (set manually in Atlas
+    // for admin bootstrap); default to STUDENT for normal sign-ups.
+    const role = student.role && student.role !== "student" ? student.role : ROLES.STUDENT;
+    const token = signToken({ sub: student._id, role });
+    authServiceLogger.info(`student login ok id=${student._id} role=${role}`);
 
     return res.status(200).json({ access_token: token });
   } catch (error) {
@@ -68,8 +71,9 @@ router.post("/professor", async (req, res) => {
       return res.status(401).json({ error: "invalid credentials" });
     }
 
-    const token = signToken({ sub: professor._id, role: ROLES.PROFESSOR });
-    authServiceLogger.info(`professor login ok id=${professor._id}`);
+    const role = professor.role && professor.role !== "professor" ? professor.role : ROLES.PROFESSOR;
+    const token = signToken({ sub: professor._id, role });
+    authServiceLogger.info(`professor login ok id=${professor._id} role=${role}`);
 
     return res.status(200).json({ access_token: token });
   } catch (error) {

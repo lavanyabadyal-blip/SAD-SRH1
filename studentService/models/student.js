@@ -24,6 +24,14 @@ const studentSchema = new mongoose.Schema(
       required: true,
       minlength: 6,
     },
+    // Role is "student" by default. Manually promoting a row to "admin"
+    // (via Atlas) is how we bootstrap the first administrator in the
+    // system. Login picks this up and embeds it in the JWT.
+    role: {
+      type: String,
+      enum: ["student", "admin"],
+      default: "student",
+    },
   },
   { timestamps: true }
 );

@@ -1,0 +1,138 @@
+### ============================================================
+### SMS — End-to-end flow you can click through, top to bottom
+### Open this file in VS Code with REST Client extension installed.
+### Each "Send Request" link is grey text above a request.
+### ============================================================
+
+### Step 1 — Register a new STUDENT (public, no token needed)
+POST http://localhost:5003/api/students
+Content-Type: application/json
+
+{
+  "name": "Lavanya Badyal",
+  "email": "lavanya.badyal@data.com",
+  "password": "Lavanya123"
+}
+
+
+### Step 2 — Log in as that student to get a JWT
+# @name studentLogin
+POST http://localhost:5001/api/login/student
+Content-Type: application/json
+
+{
+  "email": "lavanya.badyal@data.com",
+  "password": "Lavanya123"
+}
+
+
+### Step 3 — Copy the access_token from Step 2's response, paste below.
+### Then send this to get your own profile.
+GET http://localhost:5003/api/students/PASTE_YOUR_STUDENT_ID_HERE
+Authorization: Bearer PASTE_STUDENT_TOKEN_HERE
+
+
+### Step 4 — Try listing ALL students. This will FAIL with 403
+### because students cannot list other students. That is the RBAC working.
+GET http://localhost:5003/api/students
+Authorization: Bearer PASTE_STUDENT_TOKEN_HERE
+
+
+### ============================================================
+### Admin flow — to create professors and courses, you need an admin token.
+### One way: connect to your MongoDB Atlas, open the "students" collection,
+### find your student record, and edit the role field to "admin".
+### Then log in again. The new token will have role=admin.
+### (Or, for the demo, you can directly insert an admin student.)
+### ============================================================
+
+
+### Step 5 — Create a PROFESSOR (admin only)
+POST http://localhost:5002/api/professors
+Content-Type: application/json
+Authorization: Bearer PASTE_ADMIN_TOKEN_HERE
+
+{
+  "name": "Dr. Gunjan",
+  "email": "gunjan@data.com",
+  "phone": "555-0101",
+  "password": "gunjan123"
+}
+
+
+### Step 6 — Log in as that professor
+# @name professorLogin
+POST http://localhost:5001/api/login/professor
+Content-Type: application/json
+
+{
+  "email": "gunjan@data.com",
+  "password": "gunjan123"
+}
+
+
+### Step 7 — Create a COURSE owned by that professor
+### (Use the professor token from Step 6)
+POST http://localhost:5004/api/courses
+Content-Type: application/json
+Authorization: Bearer PASTE_PROFESSOR_TOKEN_HERE
+
+{
+  "code": "CS101",
+  "name": "Intro to Computer Science",
+  "description": "Basics of programming",
+  "capacity": 30
+}
+
+
+### Step 8 — List all courses (any logged-in user can)
+GET http://localhost:5004/api/courses
+Authorization: Bearer PASTE_ANY_TOKEN_HERE
+
+
+### Step 9 — Enroll a student in a course (admin or professor)
+POST http://localhost:5005/api/enrollments
+Content-Type: application/json
+Authorization: Bearer PASTE_PROFESSOR_TOKEN_HERE
+
+{
+  "student": "PASTE_STUDENT_ID_HERE",
+  "course": "PASTE_COURSE_ID_HERE"
+}
+
+
+### Step 10 — As the student, look at your own enrollments
+GET http://localhost:5005/api/enrollments/student/PASTE_STUDENT_ID_HERE
+Authorization: Bearer PASTE_STUDENT_TOKEN_HERE
+
+
+### Step 11 — As the professor, see who is enrolled in your course
+GET http://localhost:5005/api/enrollments/course/PASTE_COURSE_ID_HERE
+Authorization: Bearer PASTE_PROFESSOR_TOKEN_HERE
+
+
+### ============================================================
+### Update and delete examples
+### ============================================================
+
+### Update a student's own name/email
+PUT http://localhost:5003/api/students/PASTE_STUDENT_ID_HERE
+Content-Type: application/json
+Authorization: Bearer PASTE_STUDENT_TOKEN_HERE
+
+{
+  "name": "Lavanya Updated"
+}
+
+
+### Delete a student (admin only)
+DELETE http://localhost:5003/api/students/PASTE_STUDENT_ID_HERE
+Authorization: Bearer PASTE_ADMIN_TOKEN_HERE
+
+
+### ============================================================
+### Quick health check
+### ============================================================
+
+### Confirm auth service is running and serving its public key
+GET http://localhost:5001/.well-known/jwks.json
